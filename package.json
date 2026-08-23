@@ -9,7 +9,7 @@
     "dev:bot": "pnpm --filter @pump-terminal/bot dev",
     "dev:terminal": "pnpm --filter @pump-terminal/terminal dev",
     "typecheck": "pnpm -r typecheck",
-    "build": "pnpm -r build"
+    "build": "pnpm --filter @pump-terminal/terminal build"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
