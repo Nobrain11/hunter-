@@ -1,0 +1,17 @@
+{
+  "name": "@pump-terminal/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.0.0",
+    "@pump-terminal/config": "workspace:*",
+    "@pump-terminal/store": "workspace:*",
+    "fastify": "^5.2.1",
+    "zod": "^3.24.2"
+  }
+}
