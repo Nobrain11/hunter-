@@ -1,0 +1,14 @@
+{
+  "name": "@pump-terminal/ingest",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pump-terminal/store": "workspace:*",
+    "@pump-terminal/types": "workspace:*"
+  }
+}
