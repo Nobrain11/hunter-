@@ -1,0 +1,19 @@
+{
+  "name": "pump-terminal",
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev": "concurrently -n api,ingest,bot -c blue,green,magenta \"pnpm --filter @pump-terminal/api dev\" \"pnpm --filter @pump-terminal/ingest dev\" \"pnpm --filter @pump-terminal/bot dev\"",
+    "dev:api": "pnpm --filter @pump-terminal/api dev",
+    "dev:ingest": "pnpm --filter @pump-terminal/ingest dev",
+    "dev:bot": "pnpm --filter @pump-terminal/bot dev",
+    "dev:terminal": "pnpm --filter @pump-terminal/terminal dev",
+    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm -r build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.8.0",
+    "tsx": "^4.19.3"
+  }
+}
