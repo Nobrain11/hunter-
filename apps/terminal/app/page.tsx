@@ -1,99 +1,44 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
-type Token = {
-  mint: string;
-  name: string;
-  symbol: string;
-  market: string;
-  curveProgress: number;
-  riskLevel: "LOW" | "MEDIUM" | "HIGH";
-};
+type Risk = "LOW" | "MEDIUM" | "HIGH";
+type Token = { mint: string; name: string; symbol: string; score: number; curve: number; pressure: number; buyers: number; flow: number; risk: Risk; age: string };
 
-type Metrics = {
-  score: number;
-  buyPressure: number;
-  uniqueBuyers: number;
-  buyVolumeSol: number;
-  sellVolumeSol: number;
-};
-
-type Row = { token: Token; metrics: Metrics | null };
-
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-
-const fallbackRows: Row[] = [
-  { token: { mint: "7xKX...mP4q", name: "Kite Protocol", symbol: "KITE", market: "PUMP.FUN", curveProgress: 78, riskLevel: "LOW" }, metrics: { score: 94, buyPressure: 68.4, uniqueBuyers: 182, buyVolumeSol: 91.2, sellVolumeSol: 34.8 } },
-  { token: { mint: "9qQe...hY7a", name: "Mochi Terminal", symbol: "MOCHI", market: "PUMP.FUN", curveProgress: 51, riskLevel: "MEDIUM" }, metrics: { score: 88, buyPressure: 59.1, uniqueBuyers: 116, buyVolumeSol: 54.6, sellVolumeSol: 28.2 } },
-  { token: { mint: "4nVb...pL2z", name: "Orbit Dog", symbol: "ORBIT", market: "PUMP.FUN", curveProgress: 33, riskLevel: "HIGH" }, metrics: { score: 76, buyPressure: 44.8, uniqueBuyers: 74, buyVolumeSol: 22.4, sellVolumeSol: 30.1 } },
-  { token: { mint: "B8sT...2Qw9", name: "Index 404", symbol: "IDX", market: "PUMP.FUN", curveProgress: 89, riskLevel: "LOW" }, metrics: { score: 71, buyPressure: 52.2, uniqueBuyers: 231, buyVolumeSol: 124.8, sellVolumeSol: 88.5 } },
-  { token: { mint: "3LmR...vK81", name: "Signal Garden", symbol: "SGRN", market: "PUMP.FUN", curveProgress: 19, riskLevel: "HIGH" }, metrics: { score: 64, buyPressure: 38.5, uniqueBuyers: 52, buyVolumeSol: 13.7, sellVolumeSol: 21.6 } },
+const tokens: Token[] = [
+  { mint: "7xKX...mP4q", name: "Kite Protocol", symbol: "KITE", score: 94, curve: 78, pressure: 68.4, buyers: 182, flow: 56.4, risk: "LOW", age: "8m" },
+  { mint: "9qQe...hY7a", name: "Mochi Terminal", symbol: "MOCHI", score: 88, curve: 51, pressure: 59.1, buyers: 116, flow: 26.4, risk: "MEDIUM", age: "14m" },
+  { mint: "4nVb...pL2z", name: "Orbit Dog", symbol: "ORBIT", score: 76, curve: 33, pressure: 44.8, buyers: 74, flow: -7.7, risk: "HIGH", age: "22m" },
+  { mint: "B8sT...2Qw9", name: "Index 404", symbol: "IDX", score: 71, curve: 89, pressure: 52.2, buyers: 231, flow: 36.3, risk: "LOW", age: "31m" },
+  { mint: "3LmR...vK81", name: "Signal Garden", symbol: "SGRN", score: 64, curve: 19, pressure: 38.5, buyers: 52, flow: -7.9, risk: "HIGH", age: "46m" },
+  { mint: "5aPd...rT12", name: "Tiny Atlas", symbol: "ATLAS", score: 59, curve: 42, pressure: 35.2, buyers: 39, flow: 3.8, risk: "MEDIUM", age: "1h" },
 ];
 
-function formatSol(value: number) { return `${value.toFixed(1)} SOL`; }
+const money = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)} SOL`;
 
 export default function Home() {
-  const [rows, setRows] = useState<Row[]>(fallbackRows);
-  const [selected, setSelected] = useState<Row>(fallbackRows[0]);
-  const [query, setQuery] = useState("");
   const [tab, setTab] = useState<"trending" | "new">("trending");
-  const [side, setSide] = useState<"buy" | "sell">("buy");
+  const [query, setQuery] = useState("");
+  const [risk, setRisk] = useState<"ALL" | Risk>("ALL");
+  const [selected, setSelected] = useState(tokens[0]);
+  const [side, setSide] = useState<"BUY" | "SELL">("BUY");
   const [amount, setAmount] = useState("0.50");
+  const [connected, setConnected] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [notice, setNotice] = useState("");
-  const [online, setOnline] = useState(false);
+  const visible = useMemo(() => tokens.filter((t) => (risk === "ALL" || t.risk === risk) && `${t.name} ${t.symbol}`.toLowerCase().includes(query.toLowerCase())), [query, risk]);
 
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const response = await fetch(`${apiUrl}/api/tokens/${tab}?limit=20`, { cache: "no-store" });
-        if (!response.ok) throw new Error("offline");
-        const payload = await response.json() as { data: Row[] };
-        if (active && payload.data?.length) { setRows(payload.data); setSelected(payload.data[0]); setOnline(true); }
-      } catch { if (active) setOnline(false); }
-    };
-    void load();
-    const timer = setInterval(() => void load(), 10000);
-    return () => { active = false; clearInterval(timer); };
-  }, [tab]);
+  function order() { const value = Number(amount); if (!value || value <= 0) return setNotice("Enter a positive SOL amount."); setNotice(`${side} queued — ${value.toFixed(2)} SOL of $${selected.symbol}`); }
 
-  const visibleRows = useMemo(() => rows.filter((row) => `${row.token.name} ${row.token.symbol}`.toLowerCase().includes(query.toLowerCase())), [rows, query]);
-  const metrics = selected.metrics ?? { score: 0, buyPressure: 0, uniqueBuyers: 0, buyVolumeSol: 0, sellVolumeSol: 0 };
-
-  async function submitPaperOrder() {
-    const value = Number(amount);
-    if (!value || value <= 0) { setNotice("Enter a positive SOL amount."); return; }
-    try {
-      await fetch(`${apiUrl}/api/orders/paper`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mint: selected.token.mint, side, amountSol: value }) });
-    } catch { /* paper mode still confirms locally when API is offline */ }
-    setNotice(`${side.toUpperCase()} queued: ${value.toFixed(2)} SOL of $${selected.token.symbol}`);
-  }
-
-  return (
-    <main className="app-shell">
-      <aside className="sidebar">
-        <div className="logo"><span className="logo-mark">P</span><span>PUMP<span className="logo-dim">/TERM</span></span></div>
-        <div className="nav-label">WORKSPACE</div>
-        <nav className="nav-list" aria-label="Workspace navigation">
-          <button className="nav-item active"><span>◈</span> Market <b>⌘1</b></button>
-          <button className="nav-item"><span>◫</span> Watchlist <b>⌘2</b></button>
-          <button className="nav-item"><span>↗</span> Positions <b>⌘3</b></button>
-          <button className="nav-item"><span>≋</span> Activity</button>
-        </nav>
-        <div className="sidebar-foot"><div className="mode-card"><span className="status-dot" /> PAPER MODE <small>Live execution disabled</small></div><button className="pause-button">Emergency pause</button><div className="build">BUILD 0.4.2 <span>● ALL SYSTEMS NOMINAL</span></div></div>
-      </aside>
-
-      <section className="main-area">
-        <header className="topbar"><div className="crumb">MARKET <span>/</span> DISCOVERY</div><div className="top-actions"><span className={`connection ${online ? "is-online" : ""}`}><i /> {online ? "API CONNECTED" : "MOCK DATA"}</span><button className="wallet-button">Connect wallet <span>↗</span></button></div></header>
-        <div className="content">
-          <div className="heading-row"><div><p className="kicker">PUMPFUN MARKET INTELLIGENCE <span>•</span> 10 SEC REFRESH</p><h1>Market <em>radar</em></h1></div><div className="heading-meta"><span className="live-pulse" /> Watching 1,248 tokens<br /><small>Last scan 4 seconds ago</small></div></div>
-          <div className="stats-grid"><div><span>TRACKED TOKENS</span><strong>1,248</strong><small>+84 since session open</small></div><div><span>24H VOLUME</span><strong>12,482 <i>SOL</i></strong><small className="positive">↑ 18.4% vs yesterday</small></div><div><span>BUY PRESSURE</span><strong>61.8<i>%</i></strong><small className="positive">↑ 4.2% in 1h</small></div><div><span>OPPORTUNITIES</span><strong>27</strong><small>Above 75 signal score</small></div></div>
-          <div className="toolbar"><div className="tabs"><button className={tab === "trending" ? "selected" : ""} onClick={() => setTab("trending")}>Trending <span>24</span></button><button className={tab === "new" ? "selected" : ""} onClick={() => setTab("new")}>New launches <span>18</span></button></div><div className="filters"><label className="search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search tokens" /></label><button className="filter-button">Risk: all <span>⌄</span></button><button className="filter-button">Sort: score <span>⌄</span></button></div></div>
-          <div className="workspace-grid"><section className="token-panel"><div className="table-header"><span>ASSET</span><span>SIGNAL</span><span>CURVE</span><span>FLOW / 1H</span><span>TRADERS</span><span>RISK</span></div>{visibleRows.map((row) => { const m = row.metrics ?? metrics; const flow = m.buyVolumeSol - m.sellVolumeSol; return <button className={`token-row ${selected.token.mint === row.token.mint ? "row-selected" : ""}`} key={row.token.mint} onClick={() => setSelected(row)}><div className="asset"><span className="token-avatar">{row.token.symbol.slice(0, 1)}</span><span><strong>${row.token.symbol}</strong><small>{row.token.name}</small></span></div><div className="signal"><strong>{Math.round(m.score)}</strong><span><i style={{ width: `${m.score}%` }} /></span></div><div className="curve"><span>{row.token.curveProgress}%</span><i><b style={{ width: `${row.token.curveProgress}%` }} /></i></div><div className={flow >= 0 ? "positive" : "negative"}>{flow >= 0 ? "+" : ""}{formatSol(flow)}</div><div>{m.uniqueBuyers}</div><div><span className={`risk ${row.token.riskLevel.toLowerCase()}`}>{row.token.riskLevel}</span></div></button> })}</section>
-            <aside className="detail-panel"><div className="detail-top"><div><p className="kicker">SELECTED ASSET</p><h2><span className="token-avatar large">{selected.token.symbol.slice(0, 1)}</span>${selected.token.symbol}</h2><small>{selected.token.mint} <button>copy</button></small></div><span className={`risk ${selected.token.riskLevel.toLowerCase()}`}>{selected.token.riskLevel} RISK</span></div><div className="curve-card"><div><span>BONDING CURVE</span><strong>{selected.token.curveProgress}%</strong></div><div className="big-curve"><i style={{ width: `${selected.token.curveProgress}%` }} /></div><small>{selected.token.curveProgress > 70 ? "Near graduation threshold" : "Early curve phase"}</small></div><div className="detail-metrics"><div><span>SIGNAL</span><strong>{Math.round(metrics.score)}<small>/100</small></strong></div><div><span>BUY PRESSURE</span><strong>{metrics.buyPressure.toFixed(1)}<small>%</small></strong></div><div><span>UNIQUE BUYERS</span><strong>{metrics.uniqueBuyers}</strong></div></div><div className="activity"><div className="section-title">LIVE ACTIVITY <span>●</span></div><div className="activity-line"><b>BUY</b><span>4.20 SOL</span><small>just now</small></div><div className="activity-line"><b>BUY</b><span>0.84 SOL</span><small>12 sec ago</small></div><div className="activity-line sell-line"><b>SELL</b><span>1.10 SOL</span><small>28 sec ago</small></div></div><div className="trade-ticket"><div className="ticket-head"><strong>Paper trade</strong><span>SAFE SIMULATION</span></div><div className="trade-tabs"><button className={side === "buy" ? "buy-active" : ""} onClick={() => setSide("buy")}>Buy</button><button className={side === "sell" ? "sell-active" : ""} onClick={() => setSide("sell")}>Sell</button></div><label className="amount-input"><input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" /><span>SOL</span></label><div className="quick-amounts"><button onClick={() => setAmount("0.25")}>0.25</button><button onClick={() => setAmount("0.50")}>0.50</button><button onClick={() => setAmount("1.00")}>1.00</button><button onClick={() => setAmount("2.00")}>2.00</button></div><button className={`execute ${side}`} onClick={submitPaperOrder}>{side === "buy" ? "Simulate buy" : "Simulate sell"} <span>↗</span></button>{notice && <p className="order-notice">{notice}</p>}<small className="ticket-note">No real funds. Orders are recorded in paper mode only.</small></div></aside></div>
-        </div>
-      </section>
-    </main>
-  );
+  return <main className="app-shell">
+    <aside className="sidebar"><div className="brand"><span className="brand-mark">P</span><span>PUMP<span className="dim">/TERM</span></span></div><p className="eyebrow nav-eyebrow">WORKSPACE</p><nav aria-label="Workspace navigation"><button className="nav active"><span>◈</span> Market <kbd>⌘1</kbd></button><button className="nav"><span>◫</span> Watchlist <kbd>⌘2</kbd></button><button className="nav"><span>↗</span> Positions <kbd>⌘3</kbd></button><button className="nav"><span>≋</span> Activity</button></nav><div className="sidebar-bottom"><div className="mode"><span className="dot" /> PAPER MODE <small>Live execution disabled</small></div><button className="pause" onClick={() => setPaused(!paused)}>{paused ? "Resume terminal" : "Emergency pause"}</button><small className="build">BUILD 0.4.2<br /><b>● ALL SYSTEMS NOMINAL</b></small></div></aside>
+    <section className="main"><header className="topbar"><span>MARKET <i>/</i> DISCOVERY</span><div className="top-actions"><span className="connection"><span className="dot" /> MOCK DATA</span><button className="wallet" onClick={() => setConnected(!connected)}>{connected ? "7xKX...mP4q" : "Connect wallet"} <b>↗</b></button></div></header>
+      <div className="content"><div className="hero"><div><p className="eyebrow">PUMPFUN MARKET INTELLIGENCE <b>•</b> 10 SEC REFRESH</p><h1>Market <em>radar</em></h1></div><div className="watching"><span className="live" /> Watching 1,248 tokens<br /><small>Last scan 4 seconds ago</small></div></div>
+        <section className="stats"><div><span>TRACKED TOKENS</span><strong>1,248</strong><small>+84 since session open</small></div><div><span>24H VOLUME</span><strong>12,482 <i>SOL</i></strong><small className="positive">↑ 18.4% vs yesterday</small></div><div><span>BUY PRESSURE</span><strong>61.8<i>%</i></strong><small className="positive">↑ 4.2% in 1h</small></div><div><span>OPPORTUNITIES</span><strong>27</strong><small>Above 75 signal score</small></div></section>
+        <div className="toolbar"><div className="tabs"><button className={tab === "trending" ? "selected" : ""} onClick={() => setTab("trending")}>Trending <small>24</small></button><button className={tab === "new" ? "selected" : ""} onClick={() => setTab("new")}>New launches <small>18</small></button></div><div className="filters"><label className="search">⌕ <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search tokens" /></label><select value={risk} onChange={(e) => setRisk(e.target.value as "ALL" | Risk)} aria-label="Risk filter"><option value="ALL">Risk: all</option><option value="LOW">Risk: low</option><option value="MEDIUM">Risk: medium</option><option value="HIGH">Risk: high</option></select><button className="sort">Sort: score <span>⌄</span></button></div></div>
+        <div className="workspace"><section className="token-panel"><div className="table-head"><span>ASSET</span><span>SIGNAL</span><span>CURVE</span><span>FLOW / 1H</span><span>TRADERS</span><span>RISK</span></div>{visible.map((token) => <button key={token.mint} className={`token-row ${selected.mint === token.mint ? "row-selected" : ""}`} onClick={() => setSelected(token)}><div className="asset"><span className="avatar">{token.symbol[0]}</span><span><b>${token.symbol}</b><small>{token.name}</small></span></div><div className="signal"><b>{token.score}</b><span><i style={{ width: `${token.score}%` }} /></span></div><div className="curve"><b>{token.curve}%</b><span><i style={{ width: `${token.curve}%` }} /></span></div><div className={token.flow >= 0 ? "positive" : "negative"}>{money(token.flow)}</div><div>{token.buyers}</div><div><span className={`risk ${token.risk.toLowerCase()}`}>{token.risk}</span></div></button>)}{!visible.length && <div className="empty">No tokens match this filter.</div>}</section>
+          <aside className="detail"><div className="detail-heading"><div><p className="eyebrow">SELECTED ASSET</p><h2><span className="avatar large">{selected.symbol[0]}</span>${selected.symbol}</h2><small>{selected.mint} <button className="copy">copy</button></small></div><span className={`risk ${selected.risk.toLowerCase()}`}>{selected.risk} RISK</span></div><div className="curve-card"><div><span>BONDING CURVE</span><b>{selected.curve}%</b></div><div className="big-curve"><i style={{ width: `${selected.curve}%` }} /></div><small>{selected.curve > 70 ? "Near graduation threshold" : "Early curve phase"}</small></div><div className="detail-metrics"><div><span>SIGNAL</span><b>{selected.score}<small>/100</small></b></div><div><span>BUY PRESSURE</span><b>{selected.pressure}<small>%</small></b></div><div><span>UNIQUE BUYERS</span><b>{selected.buyers}</b></div></div><div className="section-title">LIVE ACTIVITY <b>●</b></div><div className="activity"><div><strong>BUY</strong><span>4.20 SOL</span><small>just now</small></div><div><strong>BUY</strong><span>0.84 SOL</span><small>12 sec ago</small></div><div className="sell"><strong>SELL</strong><span>1.10 SOL</span><small>28 sec ago</small></div></div><div className="ticket"><div className="ticket-head"><b>Paper trade</b><span>SAFE SIMULATION</span></div><div className="trade-tabs"><button className={side === "BUY" ? "buy-active" : ""} onClick={() => setSide("BUY")}>Buy</button><button className={side === "SELL" ? "sell-active" : ""} onClick={() => setSide("SELL")}>Sell</button></div><label className="amount"><input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" /><span>SOL</span></label><div className="quick"><button onClick={() => setAmount("0.25")}>0.25</button><button onClick={() => setAmount("0.50")}>0.50</button><button onClick={() => setAmount("1.00")}>1.00</button><button onClick={() => setAmount("2.00")}>2.00</button></div><button className={`execute ${side === "SELL" ? "execute-sell" : ""}`} onClick={order} disabled={paused}> {paused ? "TERMINAL PAUSED" : `${side} ${selected.symbol}`} <span>→</span></button>{notice && <p className="notice" role="status">{notice}</p>}<small className="ticket-note">Paper orders are simulated and never touch your wallet.</small></div></aside></div>
+      </div><footer className="mobile-nav"><button className="selected">◈<small>Market</small></button><button>◫<small>Watchlist</small></button><button>↗<small>Positions</small></button><button>≋<small>Activity</small></button></footer>
+    </section>
+  </main>;
 }
