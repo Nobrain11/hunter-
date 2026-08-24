@@ -10,5 +10,8 @@
   "dependencies": {
     "@pump-terminal/config": "workspace:*",
     "grammy": "^1.35.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0"
   }
 }

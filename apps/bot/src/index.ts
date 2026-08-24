@@ -1,7 +1,9 @@
 import { Bot } from "grammy";
 import { env } from "@pump-terminal/config";
 
-if (!env.BOT_TOKEN) {
+const botToken = env.BOT_TOKEN;
+
+if (!botToken) {
   console.log(
     "BOT_TOKEN is not configured. Telegram bot is disabled."
   );
@@ -9,7 +11,7 @@ if (!env.BOT_TOKEN) {
   process.exit(0);
 }
 
-const bot = new Bot(env.BOT_TOKEN);
+const bot = new Bot(botToken);
 
 async function api<T>(
   endpoint: string

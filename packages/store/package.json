@@ -1,1 +1,1 @@
-{"name":"@pump-terminal/store","version":"0.0.1","private":true,"type":"module","main":"src/index.ts","types":"src/index.ts","scripts":{"typecheck":"tsc --noEmit"},"dependencies":{"@pump-terminal/scoring":"workspace:*","@pump-terminal/types":"workspace:*"}}
+{"name":"@pump-terminal/store","version":"0.0.1","private":true,"type":"module","main":"src/index.ts","types":"src/index.ts","scripts":{"typecheck":"tsc --noEmit"},"dependencies":{"@pump-terminal/scoring":"workspace:*","@pump-terminal/types":"workspace:*"},"devDependencies":{"@types/node":"^22.13.0"}}
